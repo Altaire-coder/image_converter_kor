@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이미지 변환기</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/utif2@4.1.0/UTIF.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nanum Gothic',sans-serif;background:#f0f4f8;min-height:100vh;padding:2rem;color:#1a202c;}
+.app{max-width:940px;margin:0 auto;}
+header{text-align:center;margin-bottom:2rem;}
+header h1{font-size:1.75rem;font-weight:800;color:#2b6cb0;margin-bottom:0.3rem;}
+header p{color:#718096;font-size:0.9rem;}
+.card{background:#fff;border-radius:12px;padding:1.5rem;margin-bottom:1.2rem;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+.card h2{font-size:1rem;font-weight:700;color:#2d3748;margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:2px solid #ebf4ff;display:flex;align-items:center;gap:0.5rem;}
+.step-badge{background:#2b6cb0;color:white;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0;}
+.drop-zone{border:2.5px dashed #bee3f8;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:#ebf8ff;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#2b6cb0;background:#dbeafe;}
+.drop-zone .icon{font-size:2.2rem;margin-bottom:0.4rem;}
+.drop-zone p{color:#4a5568;font-size:0.88rem;}
+.drop-zone p strong{color:#2b6cb0;}
+.ext-list{display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center;margin-top:0.5rem;}
+.ext-badge{background:#e2e8f0;color:#4a5568;border-radius:4px;padding:0.15rem 0.5rem;font-size:0.75rem;font-weight:700;}
+#fileInput{display:none;}
+#fileInfo{margin-top:0.5rem;font-size:0.85rem;color:#2b6cb0;font-weight:700;min-height:1.2rem;}
+.type-badge{display:inline-block;padding:0.2rem 0.55rem;border-radius:5px;font-size:0.72rem;font-weight:800;margin-left:0.3rem;vertical-align:middle;}
+.type-svg{background:#fef3c7;color:#92400e;}
+.type-raster{background:#d1fae5;color:#065f46;}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:580px){.settings-grid{grid-template-columns:1fr;}}
+label{display:block;font-size:0.82rem;font-weight:700;color:#4a5568;margin-bottom:0.3rem;}
+input[type=number],select{width:100%;padding:0.5rem 0.7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-family:inherit;font-size:0.9rem;color:#2d3748;background:#fff;outline:none;transition:border-color 0.15s;}
+input[type=number]:focus,select:focus{border-color:#2b6cb0;}
+.unit-row{display:flex;gap:0.5rem;align-items:flex-end;}
+.unit-row input{flex:1;}
+.unit-row select{width:80px;}
+.presets{display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.8rem;}
+.preset-btn{padding:0.28rem 0.65rem;font-size:0.76rem;font-family:inherit;font-weight:700;border:1.5px solid #bee3f8;border-radius:20px;background:#ebf8ff;color:#2b6cb0;cursor:pointer;transition:all 0.15s;}
+.preset-btn:hover{background:#2b6cb0;color:white;border-color:#2b6cb0;}
+.format-grid{display:flex;gap:0.55rem;flex-wrap:wrap;}
+.fmt-label{display:flex;flex-direction:column;align-items:flex-start;gap:0.2rem;cursor:pointer;padding:0.38rem 0.8rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:0.84rem;font-weight:700;transition:all 0.15s;user-select:none;position:relative;}
+.fmt-label input{display:none;}
+.fmt-label.checked{background:#ebf4ff;border-color:#2b6cb0;color:#2b6cb0;}
+.fmt-note{font-size:0.66rem;font-weight:400;color:#a0aec0;line-height:1;}
+.fmt-label.checked .fmt-note{color:#90cdf4;}
+.fmt-limited{border-style:dashed;}
+.fmt-limited::after{content:'부분';position:absolute;top:-7px;right:3px;font-size:0.6rem;background:#fbd38d;color:#744210;padding:0 3px;border-radius:3px;font-weight:700;}
+.quality-row{display:flex;align-items:center;gap:0.8rem;margin-top:0.4rem;}
+input[type=range]{flex:1;accent-color:#2b6cb0;}
+.quality-val{font-weight:800;color:#2b6cb0;min-width:38px;font-size:0.92rem;}
+
+/* ── PREVIEW VIEWER ── */
+.preview-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:2px solid #ebf4ff;}
+.preview-title{font-size:1rem;font-weight:700;color:#2d3748;display:flex;align-items:center;gap:0.5rem;}
+.preview-controls{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;}
+.mode-toggle{display:flex;border:1.5px solid #cbd5e0;border-radius:7px;overflow:hidden;}
+.mode-btn{padding:0.3rem 0.85rem;font-size:0.78rem;font-family:inherit;font-weight:700;border:none;background:#f7fafc;color:#718096;cursor:pointer;transition:all 0.12s;}
+.mode-btn.active{background:#2b6cb0;color:white;}
+.toolbar{display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.55rem;}
+.tb-btn{padding:0.28rem 0.6rem;font-size:0.79rem;font-family:inherit;font-weight:700;border:1.5px solid #cbd5e0;border-radius:6px;background:#f7fafc;color:#4a5568;cursor:pointer;transition:all 0.12s;white-space:nowrap;}
+.tb-btn:hover{background:#ebf4ff;border-color:#2b6cb0;color:#2b6cb0;}
+.tb-sep{width:1px;height:20px;background:#e2e8f0;margin:0 2px;}
+.zoom-disp{font-size:0.8rem;font-weight:700;color:#2b6cb0;min-width:46px;text-align:center;padding:0.28rem 0.4rem;border:1.5px solid #bee3f8;border-radius:6px;background:#ebf8ff;}
+.viewer-outer{position:relative;width:100%;height:440px;background:repeating-conic-gradient(#e2e8f0 0% 25%,#f7fafc 0% 50%) 0 0/20px 20px;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;cursor:grab;}
+.viewer-outer.grabbing{cursor:grabbing;}
+.viewer-inner{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+.viewer-inner img{display:block;max-width:none;}
+.viewer-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#a0aec0;font-size:0.88rem;text-align:center;pointer-events:none;padding:1rem;}
+.viewer-hint{font-size:0.76rem;color:#a0aec0;margin-top:0.3rem;}
+#infoBar{font-size:0.8rem;color:#718096;margin-top:0.5rem;min-height:1rem;}
+
+/* ── BUTTONS ── */
+.btn-row{display:flex;gap:0.7rem;flex-wrap:wrap;}
+.btn{padding:0.62rem 1.3rem;border:none;border-radius:8px;font-family:inherit;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:0.4rem;}
+.btn-primary{background:#2b6cb0;color:white;}
+.btn-primary:hover{background:#2c5282;}
+.btn-primary:disabled{background:#a0aec0;cursor:not-allowed;}
+.btn-secondary{background:#edf2f7;color:#4a5568;}
+.btn-secondary:hover{background:#e2e8f0;}
+.btn-success{background:#276749;color:white;}
+.btn-success:hover{background:#1c4532;}
+.btn-success:disabled{background:#a0aec0;cursor:not-allowed;}
+#progressWrap{display:none;margin-top:0.8rem;}
+.prog-bg{background:#e2e8f0;border-radius:10px;height:8px;overflow:hidden;margin-bottom:0.4rem;}
+.prog-fill{background:linear-gradient(90deg,#2b6cb0,#63b3ed);height:100%;width:0%;transition:width 0.3s;border-radius:10px;}
+#progressText{font-size:0.82rem;color:#4a5568;}
+
+/* ── DOWNLOAD LIST ── */
+#downloadList{display:flex;flex-direction:column;gap:0.45rem;margin-top:0.7rem;}
+.dl-item{display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#f0fff4;border:1px solid #c6f6d5;border-radius:7px;font-size:0.87rem;}
+.dl-item span{color:#276749;font-weight:700;}
+.dl-link{padding:0.28rem 0.75rem;background:#276749;color:white;border-radius:5px;text-decoration:none;font-size:0.78rem;font-weight:700;transition:background 0.12s;white-space:nowrap;}
+.dl-link:hover{background:#1c4532;}
+.dl-item.warn{background:#fffaf0;border-color:#fbd38d;}
+.dl-item.warn span{color:#c05621;}
+.notice{background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:0.6rem 0.85rem;font-size:0.8rem;color:#2c5282;margin-top:0.8rem;line-height:1.6;}
+footer{text-align:center;color:#a0aec0;font-size:0.78rem;padding:1rem 0;}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>🖼️ 이미지 변환기</h1>
+  <p>브라우저 렌더링으로 글씨 깨짐 없이 변환</p>
+</header>
+
+<!-- 1. 파일 -->
+<div class="card">
+  <h2><span class="step-badge">1</span> 파일 불러오기</h2>
+  <div class="drop-zone" id="dropZone">
+    <div class="icon">📂</div>
+    <p><strong>클릭하거나 파일을 여기에 드래그</strong>하세요</p>
+    <div class="ext-list">
+      <span class="ext-badge">SVG</span><span class="ext-badge">PNG</span>
+      <span class="ext-badge">JPG</span><span class="ext-badge">JPEG</span>
+      <span class="ext-badge">BMP</span><span class="ext-badge">WebP</span>
+      <span class="ext-badge">TIFF</span><span class="ext-badge">GIF</span>
+      <span class="ext-badge">ICO</span><span class="ext-badge">AVIF</span>
+    </div>
+  </div>
+  <input type="file" id="fileInput"
+    accept=".svg,.png,.jpg,.jpeg,.bmp,.webp,.tif,.tiff,.gif,.ico,.avif,image/*">
+  <div id="fileInfo"></div>
+</div>
+
+<!-- 2. 크기 -->
+<div class="card">
+  <h2><span class="step-badge">2</span> 출력 크기 설정</h2>
+  <div class="presets">
+    <button class="preset-btn" onclick="setPreset(3000,1000,'px')">가로현수막 3000×1000</button>
+    <button class="preset-btn" onclick="setPreset(4000,1500,'px')">가로현수막 4000×1500</button>
+    <button class="preset-btn" onclick="setPreset(2000,6000,'px')">세로현수막 2000×6000</button>
+    <button class="preset-btn" onclick="setPreset(1920,1080,'px')">FHD 1920×1080</button>
+    <button class="preset-btn" onclick="setPreset(3840,2160,'px')">4K 3840×2160</button>
+    <button class="preset-btn" onclick="setPreset(2480,3508,'px')">A4 300dpi</button>
+    <button class="preset-btn" onclick="setPreset(4960,7016,'px')">A4 600dpi</button>
+    <button class="preset-btn" onclick="setOriginal()">원본 크기</button>
+  </div>
+  <div class="settings-grid">
+    <div>
+      <label>가로 (Width)</label>
+      <div class="unit-row">
+        <input type="number" id="widthVal" value="1920" min="1" max="20000" oninput="updateInfo()">
+        <select id="widthUnit" onchange="updateInfo()"><option value="px">px</option><option value="mm">mm</option><option value="cm">cm</option></select>
+      </div>
+    </div>
+    <div>
+      <label>세로 (Height)</label>
+      <div class="unit-row">
+        <input type="number" id="heightVal" value="1080" min="1" max="20000" oninput="updateInfo()">
+        <select id="heightUnit" onchange="updateInfo()"><option value="px">px</option><option value="mm">mm</option><option value="cm">cm</option></select>
+      </div>
+    </div>
+    <div>
+      <label>해상도 (DPI)</label>
+      <select id="dpiSelect" onchange="updateInfo()">
+        <option value="72">72 DPI (화면용)</option>
+        <option value="96">96 DPI (기본)</option>
+        <option value="150" selected>150 DPI (현수막 권장)</option>
+        <option value="300">300 DPI (고품질 인쇄)</option>
+        <option value="600">600 DPI (최고 해상도)</option>
+      </select>
+    </div>
+    <div>
+      <label>비율 설정</label>
+      <select id="aspectMode" onchange="updateInfo()">
+        <option value="stretch">늘리기 (비율 무시)</option>
+        <option value="contain" selected>비율 유지 (Contain)</option>
+        <option value="cover">비율 유지 (Cover — 잘라냄)</option>
+        <option value="original">원본 크기 그대로</option>
+      </select>
+    </div>
+  </div>
+  <div id="infoBar" style="margin-top:0.6rem;">↑ 파일을 먼저 업로드하세요</div>
+</div>
+
+<!-- 3. 형식 -->
+<div class="card">
+  <h2><span class="step-badge">3</span> 출력 형식 선택</h2>
+  <div class="format-grid">
+    <label class="fmt-label checked" id="lbl-png"><input type="checkbox" value="png" checked onchange="toggleFmt(this,'lbl-png')">PNG<span class="fmt-note">무손실</span></label>
+    <label class="fmt-label" id="lbl-jpg"><input type="checkbox" value="jpg" onchange="toggleFmt(this,'lbl-jpg')">JPG<span class="fmt-note">손실 압축</span></label>
+    <label class="fmt-label" id="lbl-jpeg"><input type="checkbox" value="jpeg" onchange="toggleFmt(this,'lbl-jpeg')">JPEG<span class="fmt-note">손실 압축</span></label>
+    <label class="fmt-label" id="lbl-bmp"><input type="checkbox" value="bmp" onchange="toggleFmt(this,'lbl-bmp')">BMP<span class="fmt-note">무손실·대용량</span></label>
+    <label class="fmt-label" id="lbl-webp"><input type="checkbox" value="webp" onchange="toggleFmt(this,'lbl-webp')">WebP<span class="fmt-note">손실/무손실</span></label>
+    <label class="fmt-label" id="lbl-svg"><input type="checkbox" value="svg" onchange="toggleFmt(this,'lbl-svg')">SVG<span class="fmt-note">래스터→SVG 임베드</span></label>
+    <label class="fmt-label fmt-limited" id="lbl-tiff"><input type="checkbox" value="tiff" onchange="toggleFmt(this,'lbl-tiff')">TIFF<span class="fmt-note">무손실·인쇄용</span></label>
+    <label class="fmt-label fmt-limited" id="lbl-gif"><input type="checkbox" value="gif" onchange="toggleFmt(this,'lbl-gif')">GIF<span class="fmt-note">256색 제한</span></label>
+    <label class="fmt-label fmt-limited" id="lbl-ico"><input type="checkbox" value="ico" onchange="toggleFmt(this,'lbl-ico')">ICO<span class="fmt-note">아이콘 전용</span></label>
+    <label class="fmt-label fmt-limited" id="lbl-avif"><input type="checkbox" value="avif" onchange="toggleFmt(this,'lbl-avif')">AVIF<span class="fmt-note">최신 압축</span></label>
+  </div>
+  <div class="notice">📌 TIFF: 무압축 출력 | GIF·ICO·AVIF: 미지원 시 PNG 대체 | SVG: 래스터를 SVG 안에 임베드</div>
+  <div style="margin-top:1rem;">
+    <label>손실 압축 품질 (JPG / JPEG / WebP)</label>
+    <div class="quality-row">
+      <span style="font-size:0.78rem;color:#718096">낮음</span>
+      <input type="range" id="qualitySlider" min="0.1" max="1" step="0.05" value="0.92"
+             oninput="document.getElementById('qualQual').textContent=Math.round(this.value*100)+'%'">
+      <span style="font-size:0.78rem;color:#718096">높음</span>
+      <span class="quality-val" id="qualQual">92%</span>
+    </div>
+  </div>
+  <div style="margin-top:1rem;">
+    <label>배경색</label>
+    <div style="display:flex;align-items:center;gap:0.7rem;margin-top:0.3rem;">
+      <input type="color" id="bgColor" value="#ffffff"
+             style="width:42px;height:34px;border:1.5px solid #cbd5e0;border-radius:6px;cursor:pointer;padding:2px;" disabled>
+      <select id="bgMode" style="flex:1;" onchange="document.getElementById('bgColor').disabled=(this.value!=='custom')">
+        <option value="white">흰색 배경</option>
+        <option value="transparent">투명 (PNG·WebP·SVG 전용)</option>
+        <option value="custom">사용자 지정 색상</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 미리보기 -->
+<div class="card">
+  <div class="preview-header">
+    <div class="preview-title"><span class="step-badge">4</span> 미리보기</div>
+    <div class="preview-controls">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeOutput" onclick="switchMode('output')">출력 미리보기</button>
+        <button class="mode-btn" id="modeOriginal" onclick="switchMode('original')">원본 미리보기</button>
+      </div>
+      <button class="tb-btn" onclick="refreshPreview()" title="새로고침">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <!-- 뷰어 툴바 -->
+  <div class="toolbar">
+    <button class="tb-btn" onclick="zoomIn()">＋ 확대</button>
+    <button class="tb-btn" onclick="zoomOut()">－ 축소</button>
+    <button class="tb-btn" onclick="zoomReset()">100%</button>
+    <button class="tb-btn" onclick="zoomFit()">⊡ 화면 맞춤</button>
+    <button class="tb-btn" onclick="zoomActual()">1:1 원본</button>
+    <div class="tb-sep"></div>
+    <span class="zoom-disp" id="zoomLabel">—</span>
+  </div>
+
+  <!-- 뷰어 본체 -->
+  <div class="viewer-outer" id="viewerOuter">
+    <div class="viewer-inner" id="viewerInner">
+      <img id="previewImg" src="" alt="" style="display:none;">
+    </div>
+    <div class="viewer-placeholder" id="viewerPlaceholder">
+      파일을 업로드하면 여기에 미리보기가 표시됩니다
+    </div>
+  </div>
+  <div class="viewer-hint">
+    🖱 휠: 확대/축소 &nbsp;|&nbsp; 드래그: 이동 &nbsp;|&nbsp; 더블클릭: 화면 맞춤 &nbsp;|&nbsp; 핀치: 터치 줌
+  </div>
+</div>
+
+<!-- 5. 변환 -->
+<div class="card">
+  <h2><span class="step-badge">5</span> 변환</h2>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="convertBtn" onclick="startConvert()" disabled>⚡ 변환 시작</button>
+  </div>
+  <div id="progressWrap">
+    <div class="prog-bg"><div class="prog-fill" id="progressFill"></div></div>
+    <div id="progressText"></div>
+  </div>
+</div>
+
+<!-- 6. 다운로드 -->
+<div class="card" id="downloadCard" style="display:none;">
+  <h2><span class="step-badge">6</span> 다운로드</h2>
+  <div id="downloadList"></div>
+  <div style="margin-top:0.8rem;">
+    <button class="btn btn-success" id="dlAllBtn" onclick="downloadAll()" style="display:none;">⬇ 전체 일괄 다운로드</button>
+  </div>
+</div>
+
+<footer>모든 변환은 브라우저 내에서 처리됩니다 — 파일이 서버에 업로드되지 않습니다</footer>
+</div>
+<canvas id="offscreen" style="display:none;"></canvas>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let loadedImageData = null;
+let origW = 800, origH = 600;
+const DPI_BASE = 96;
+let currentMode = 'output';
+let originalDataUrl = null;
+let outputDataUrl = null;
+let convertedResults = [];
+
+// Viewer state
+let viewScale = 1, viewX = 0, viewY = 0;
+let isDragging = false, dsx = 0, dsy = 0, dvx = 0, dvy = 0;
+let lastPinchDist = null;
+
+// ══════════════════════════════════════
+//  DOM refs
+// ══════════════════════════════════════
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const viewerOuter= document.getElementById('viewerOuter');
+const viewerInner= document.getElementById('viewerInner');
+const previewImg = document.getElementById('previewImg');
+const viewerPH   = document.getElementById('viewerPlaceholder');
+const zoomLabel  = document.getElementById('zoomLabel');
+
+// ══════════════════════════════════════
+//  FILE LOAD
+// ══════════════════════════════════════
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+function getExt(n){ return n.split('.').pop().toLowerCase(); }
+
+function loadFile(f){
+  const ext = getExt(f.name);
+  if (ext==='svg') { loadSVG(f); return; }
+  if (ext==='tif'||ext==='tiff') { loadTIFF(f); return; }
+  loadRaster(f);
+}
+
+function afterLoad(name, type, w, h, extra){
+  const cls = type==='svg' ? 'type-svg' : 'type-raster';
+  const lbl = type==='svg' ? 'SVG' : '래스터';
+  document.getElementById('fileInfo').innerHTML =
+    `✅ ${name} <span class="type-badge ${cls}">${lbl}</span> 원본: ${Math.round(w)}×${Math.round(h)}px ${extra||''}`;
+  origW = w; origH = h;
+  document.getElementById('convertBtn').disabled = false;
+  updateInfo();
+}
+
+function loadSVG(f){
+  const r = new FileReader();
+  r.onload = e => {
+    const txt = e.target.result;
+    const {w,h} = parseSvgSize(txt);
+    loadedImageData = { type:'svg', content:txt, origW:w, origH:h, fileName:f.name.replace(/\.svg$/i,'') };
+    originalDataUrl = null; outputDataUrl = null;
+    afterLoad(f.name,'svg',w,h,'');
+    document.fonts.ready.then(() => {
+      buildOriginalUrlForSVG().then(url => { originalDataUrl = url; renderMode('output'); });
+    });
+  };
+  r.readAsText(f);
+}
+
+function loadRaster(f){
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      loadedImageData = { type:'raster', content:e.target.result, origW:img.naturalWidth, origH:img.naturalHeight, fileName:f.name.replace(/\.[^.]+$/,''), img };
+      originalDataUrl = e.target.result; outputDataUrl = null;
+      afterLoad(f.name,'raster',img.naturalWidth,img.naturalHeight,'');
+      renderMode('output');
+    };
+    img.onerror = () => alert('이미지를 불러올 수 없습니다.');
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(f);
+}
+
+function loadTIFF(f){
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const buf = e.target.result;
+      const ifds = UTIF.decode(buf);
+      UTIF.decodeImage(buf, ifds[0]);
+      const rgba = UTIF.toRGBA8(ifds[0]);
+      const w=ifds[0].width, h=ifds[0].height;
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer),w,h),0,0);
+      const url=c.toDataURL('image/png');
+      const img=new Image();
+      img.onload=()=>{
+        loadedImageData={type:'raster',content:url,origW:w,origH:h,fileName:f.name.replace(/\.[^.]+$/,''),img};
+        originalDataUrl=url; outputDataUrl=null;
+        afterLoad(f.name,'raster',w,h,'(TIFF 디코딩됨)');
+        renderMode('output');
+      };
+      img.src=url;
+    } catch(err){ alert('TIFF 오류: '+err.message); }
+  };
+  r.readAsArrayBuffer(f);
+}
+
+function parseSvgSize(str){
+  const doc=new DOMParser().parseFromString(str,'image/svg+xml');
+  const svg=doc.querySelector('svg');
+  if(!svg) return {w:800,h:600};
+  const vb=svg.getAttribute('viewBox');
+  if(vb){ const p=vb.trim().split(/[\s,]+/); if(p.length>=4) return {w:parseFloat(p[2]),h:parseFloat(p[3])};  }
+  return {w:parseFloat(svg.getAttribute('width'))||800,h:parseFloat(svg.getAttribute('height'))||600};
+}
+
+// ══════════════════════════════════════
+//  SIZE & INFO
+// ══════════════════════════════════════
+function toPx(v,u){ if(u==='mm') return v*DPI_BASE/25.4; if(u==='cm') return v*DPI_BASE/2.54; return v; }
+
+function getOutputPx(){
+  const wv=parseFloat(document.getElementById('widthVal').value)||1920;
+  const hv=parseFloat(document.getElementById('heightVal').value)||1080;
+  const wu=document.getElementById('widthUnit').value;
+  const hu=document.getElementById('heightUnit').value;
+  const dpi=parseInt(document.getElementById('dpiSelect').value);
+  const mode=document.getElementById('aspectMode').value;
+  const sc=dpi/DPI_BASE;
+  let wp=toPx(wv,wu)*sc, hp=toPx(hv,hu)*sc;
+  if(mode==='original'){wp=origW;hp=origH;}
+  else if(mode==='contain'&&origW&&origH){const r=origW/origH,tr=wp/hp;if(r>tr)hp=wp/r;else wp=hp*r;}
+  return {w:Math.round(wp),h:Math.round(hp)};
+}
+
+function setOriginal(){ document.getElementById('widthVal').value=Math.round(origW); document.getElementById('heightVal').value=Math.round(origH); document.getElementById('widthUnit').value='px'; document.getElementById('heightUnit').value='px'; updateInfo(); }
+function setPreset(w,h,u){ document.getElementById('widthVal').value=w; document.getElementById('heightVal').value=h; document.getElementById('widthUnit').value=u; document.getElementById('heightUnit').value=u; updateInfo(); }
+
+function updateInfo(){
+  if(!loadedImageData){document.getElementById('infoBar').textContent='↑ 파일을 먼저 업로드하세요';return;}
+  const{w,h}=getOutputPx();
+  const dpi=parseInt(document.getElementById('dpiSelect').value);
+  const mb=(w*h*4/1024/1024).toFixed(1);
+  document.getElementById('infoBar').textContent=`출력 해상도: ${w} × ${h} px (${dpi} DPI) — 예상 메모리: ~${mb} MB`;
+}
+
+function toggleFmt(cb,id){ document.getElementById(id).classList.toggle('checked',cb.checked); }
+
+// ══════════════════════════════════════
+//  VIEWER — zoom & pan
+// ══════════════════════════════════════
+function applyTransform(anim){
+  viewerInner.style.transition = anim ? 'transform 0.18s ease' : 'none';
+  viewerInner.style.transform = `translate(${viewX}px,${viewY}px) scale(${viewScale})`;
+  zoomLabel.textContent = Math.round(viewScale*100)+'%';
+}
+
+function zoomAt(factor, cx, cy){
+  const ns = Math.max(0.02, Math.min(30, viewScale*factor));
+  const ratio = ns/viewScale;
+  viewX = cx - ratio*(cx-viewX);
+  viewY = cy - ratio*(cy-viewY);
+  viewScale = ns;
+  applyTransform(false);
+}
+
+function zoomFit(){
+  if(!previewImg.naturalWidth) return;
+  const ow=viewerOuter.offsetWidth, oh=viewerOuter.offsetHeight;
+  const s=Math.min(ow/previewImg.naturalWidth, oh/previewImg.naturalHeight);
+  viewScale=s;
+  viewX=(ow-previewImg.naturalWidth*s)/2;
+  viewY=(oh-previewImg.naturalHeight*s)/2;
+  applyTransform(true);
+}
+function zoomReset(){
+  const ow=viewerOuter.offsetWidth, oh=viewerOuter.offsetHeight;
+  viewScale=1; viewX=(ow-previewImg.naturalWidth)/2; viewY=(oh-previewImg.naturalHeight)/2;
+  applyTransform(true);
+}
+function zoomActual(){ zoomReset(); }
+function zoomIn(){ const cx=viewerOuter.offsetWidth/2,cy=viewerOuter.offsetHeight/2; zoomAt(1.3,cx,cy); }
+function zoomOut(){ const cx=viewerOuter.offsetWidth/2,cy=viewerOuter.offsetHeight/2; zoomAt(1/1.3,cx,cy); }
+
+// wheel
+viewerOuter.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect=viewerOuter.getBoundingClientRect();
+  zoomAt(e.deltaY<0?1.12:1/1.12, e.clientX-rect.left, e.clientY-rect.top);
+},{passive:false});
+
+// drag
+viewerOuter.addEventListener('mousedown', e => {
+  isDragging=true; dsx=e.clientX; dsy=e.clientY; dvx=viewX; dvy=viewY;
+  viewerOuter.classList.add('grabbing');
+});
+window.addEventListener('mousemove', e => {
+  if(!isDragging) return;
+  viewX=dvx+(e.clientX-dsx); viewY=dvy+(e.clientY-dsy);
+  applyTransform(false);
+});
+window.addEventListener('mouseup', () => { isDragging=false; viewerOuter.classList.remove('grabbing'); });
+
+// touch
+viewerOuter.addEventListener('touchstart', e => {
+  if(e.touches.length===1){ isDragging=true; dsx=e.touches[0].clientX; dsy=e.touches[0].clientY; dvx=viewX; dvy=viewY; }
+  if(e.touches.length===2){ lastPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); }
+  e.preventDefault();
+},{passive:false});
+viewerOuter.addEventListener('touchmove', e => {
+  if(e.touches.length===1&&isDragging){ viewX=dvx+(e.touches[0].clientX-dsx); viewY=dvy+(e.touches[0].clientY-dsy); applyTransform(false); }
+  if(e.touches.length===2&&lastPinchDist!==null){
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    const rect=viewerOuter.getBoundingClientRect();
+    const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left;
+    const cy=(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top;
+    zoomAt(d/lastPinchDist,cx,cy); lastPinchDist=d;
+  }
+  e.preventDefault();
+},{passive:false});
+viewerOuter.addEventListener('touchend', () => { isDragging=false; lastPinchDist=null; });
+viewerOuter.addEventListener('dblclick', zoomFit);
+
+// ══════════════════════════════════════
+//  SHOW IN VIEWER
+// ══════════════════════════════════════
+function showInViewer(dataUrl, fit){
+  viewerPH.style.display='none';
+  previewImg.style.display='block';
+  previewImg.onload = () => { if(fit) zoomFit(); };
+  previewImg.src = dataUrl;
+}
+
+// ══════════════════════════════════════
+//  PREVIEW MODES
+// ══════════════════════════════════════
+function switchMode(mode){
+  currentMode=mode;
+  document.getElementById('modeOutput').classList.toggle('active',mode==='output');
+  document.getElementById('modeOriginal').classList.toggle('active',mode==='original');
+  renderMode(mode);
+}
+
+function refreshPreview(){ renderMode(currentMode); }
+
+async function renderMode(mode){
+  if(!loadedImageData) return;
+  if(mode==='original'){
+    if(originalDataUrl) showInViewer(originalDataUrl, true);
+    return;
+  }
+  // output mode
+  if(outputDataUrl){ showInViewer(outputDataUrl, true); return; }
+  // render preview at capped resolution
+  const{w,h}=getOutputPx();
+  const MAX=2400;
+  const s=Math.min(1,MAX/Math.max(w,h));
+  const pw=Math.round(w*s), ph=Math.round(h*s);
+  const cvs=document.createElement('canvas');
+  try{
+    if(loadedImageData.type==='svg') await svgToCanvas(cvs,pw,ph);
+    else drawToCanvas(cvs,loadedImageData.img,pw,ph);
+    const url=cvs.toDataURL('image/png');
+    outputDataUrl=url;
+    showInViewer(url, true);
+  } catch(e){ console.warn(e); }
+}
+
+// ══════════════════════════════════════
+//  SVG UTILS
+// ══════════════════════════════════════
+function buildSvgUrl(svgStr,tw,th){
+  const doc=new DOMParser().parseFromString(svgStr,'image/svg+xml');
+  const svg=doc.querySelector('svg');
+  if(!svg) return null;
+  const s=doc.createElementNS('http://www.w3.org/2000/svg','style');
+  s.textContent="@import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap');";
+  svg.insertBefore(s,svg.firstChild);
+  if(!svg.getAttribute('viewBox')) svg.setAttribute('viewBox',`0 0 ${origW} ${origH}`);
+  svg.setAttribute('width',tw); svg.setAttribute('height',th);
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const blob=new Blob([new XMLSerializer().serializeToString(doc)],{type:'image/svg+xml;charset=utf-8'});
+  return URL.createObjectURL(blob);
+}
+
+function svgToCanvas(canvas,tw,th){
+  return new Promise((res,rej)=>{
+    const url=buildSvgUrl(loadedImageData.content,tw,th);
+    if(!url){rej(new Error('SVG 파싱 실패'));return;}
+    const img=new Image(); img.crossOrigin='anonymous';
+    img.onload=()=>{
+      canvas.width=tw; canvas.height=th;
+      const ctx=canvas.getContext('2d');
+      const bg=getBgColor();
+      if(bg){ctx.fillStyle=bg;ctx.fillRect(0,0,tw,th);}else{ctx.clearRect(0,0,tw,th);}
+      ctx.drawImage(img,0,0,tw,th);
+      URL.revokeObjectURL(url); res();
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('SVG 렌더링 실패'));};
+    img.src=url;
+  });
+}
+
+async function buildOriginalUrlForSVG(){
+  const cvs=document.createElement('canvas');
+  await svgToCanvas(cvs,origW,origH);
+  return cvs.toDataURL('image/png');
+}
+
+function getBgColor(){
+  const m=document.getElementById('bgMode').value;
+  if(m==='transparent') return null;
+  if(m==='white') return '#ffffff';
+  return document.getElementById('bgColor').value;
+}
+
+function drawToCanvas(canvas,img,tw,th){
+  canvas.width=tw; canvas.height=th;
+  const ctx=canvas.getContext('2d');
+  const bg=getBgColor();
+  if(bg){ctx.fillStyle=bg;ctx.fillRect(0,0,tw,th);}else{ctx.clearRect(0,0,tw,th);}
+  const mode=document.getElementById('aspectMode').value;
+  if(mode==='cover'){
+    const sr=img.naturalWidth/img.naturalHeight,dr=tw/th;
+    let sw,sh,sx,sy;
+    if(sr>dr){sh=img.naturalHeight;sw=sh*dr;sx=(img.naturalWidth-sw)/2;sy=0;}
+    else{sw=img.naturalWidth;sh=sw/dr;sx=0;sy=(img.naturalHeight-sh)/2;}
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,tw,th);
+  } else { ctx.drawImage(img,0,0,tw,th); }
+}
+
+// ══════════════════════════════════════
+//  FORMAT ENCODERS
+// ══════════════════════════════════════
+function canvasToFormat(canvas,fmt,q){
+  q=parseFloat(q);
+  switch(fmt){
+    case 'png':  return {dataUrl:canvas.toDataURL('image/png'),ext:'png'};
+    case 'jpg':  return {dataUrl:canvas.toDataURL('image/jpeg',q),ext:'jpg'};
+    case 'jpeg': return {dataUrl:canvas.toDataURL('image/jpeg',q),ext:'jpeg'};
+    case 'bmp':  return {dataUrl:canvas.toDataURL('image/bmp'),ext:'bmp'};
+    case 'webp': return {dataUrl:canvas.toDataURL('image/webp',q),ext:'webp'};
+    case 'avif':{ const d=canvas.toDataURL('image/avif',q); return {dataUrl:d.startsWith('data:image/avif')?d:canvas.toDataURL('image/png'),ext:'avif',warn:!d.startsWith('data:image/avif')}; }
+    case 'gif':{ const d=canvas.toDataURL('image/gif'); return {dataUrl:d.startsWith('data:image/gif')?d:canvas.toDataURL('image/png'),ext:'gif',warn:!d.startsWith('data:image/gif')}; }
+    case 'ico':  return buildICO(canvas);
+    case 'tiff': return buildTIFF(canvas);
+    case 'svg':  return canvasToSVG(canvas);
+    default:     return {dataUrl:canvas.toDataURL('image/png'),ext:'png'};
+  }
+}
+
+function canvasToSVG(canvas){
+  const w=canvas.width,h=canvas.height,b=canvas.toDataURL('image/png');
+  const s=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><image href="${b}" width="${w}" height="${h}"/></svg>`;
+  return {dataUrl:'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(s))),ext:'svg'};
+}
+
+function buildICO(canvas){
+  const sz=Math.min(canvas.width,canvas.height,256);
+  const t=document.createElement('canvas');t.width=sz;t.height=sz;
+  t.getContext('2d').drawImage(canvas,0,0,sz,sz);
+  const px=t.getContext('2d').getImageData(0,0,sz,sz).data;
+  const bsz=40+sz*sz*4,tot=6+16+bsz;
+  const buf=new ArrayBuffer(tot),dv=new DataView(buf);
+  dv.setUint16(0,0,true);dv.setUint16(2,1,true);dv.setUint16(4,1,true);
+  dv.setUint8(6,sz===256?0:sz);dv.setUint8(7,sz===256?0:sz);
+  dv.setUint8(8,0);dv.setUint8(9,0);dv.setUint16(10,1,true);dv.setUint16(12,32,true);
+  dv.setUint32(14,bsz,true);dv.setUint32(18,22,true);
+  dv.setUint32(22,40,true);dv.setInt32(26,sz,true);dv.setInt32(30,sz*2,true);
+  dv.setUint16(34,1,true);dv.setUint16(36,32,true);dv.setUint32(38,0,true);dv.setUint32(42,sz*sz*4,true);
+  for(let i=0;i<6;i++)dv.setUint32(46+i*4,0,true);
+  const off=62;
+  for(let y=sz-1;y>=0;y--)for(let x=0;x<sz;x++){
+    const s2=(y*sz+x)*4,d2=off+((sz-1-y)*sz+x)*4;
+    dv.setUint8(d2,px[s2+2]);dv.setUint8(d2+1,px[s2+1]);dv.setUint8(d2+2,px[s2]);dv.setUint8(d2+3,px[s2+3]);
+  }
+  return {dataUrl:'data:image/x-icon;base64,'+btoa(String.fromCharCode(...new Uint8Array(buf))),ext:'ico'};
+}
+
+function buildTIFF(canvas){
+  const w=canvas.width,h=canvas.height;
+  const rgba=canvas.getContext('2d').getImageData(0,0,w,h).data;
+  const N=11,iOff=8,iSz=2+N*12+4,sOff=iOff+iSz;
+  const buf=new ArrayBuffer(sOff+rgba.length);
+  const dv=new DataView(buf),arr=new Uint8Array(buf);
+  dv.setUint16(0,0x4949,true);dv.setUint16(2,42,true);dv.setUint32(4,iOff,true);
+  let p=iOff;dv.setUint16(p,N,true);p+=2;
+  const E=(tag,type,cnt,val)=>{dv.setUint16(p,tag,true);dv.setUint16(p+2,type,true);dv.setUint32(p+4,cnt,true);dv.setUint32(p+8,val,true);p+=12;};
+  E(256,3,1,w);E(257,3,1,h);E(258,3,1,8);E(259,3,1,1);E(262,3,1,2);
+  E(273,4,1,sOff);E(277,3,1,4);E(278,3,1,h);E(279,4,1,rgba.length);
+  E(338,3,1,2);E(284,3,1,1);dv.setUint32(p,0,true);
+  arr.set(rgba,sOff);
+  return {dataUrl:'data:image/tiff;base64,'+btoa(new Uint8Array(buf).reduce((s,b)=>s+String.fromCharCode(b),'')),ext:'tiff'};
+}
+
+// ══════════════════════════════════════
+//  CONVERT (Step 5)
+// ══════════════════════════════════════
+async function startConvert(){
+  if(!loadedImageData){alert('파일을 먼저 업로드하세요.');return;}
+  const fmts=[...document.querySelectorAll('.format-grid input:checked')].map(c=>c.value);
+  if(!fmts.length){alert('출력 형식을 하나 이상 선택하세요.');return;}
+  const{w,h}=getOutputPx();
+  if(w>16000||h>16000){if(!confirm(`매우 큰 이미지(${w}×${h}px)입니다. 계속하시겠습니까?`))return;}
+
+  const pwEl=document.getElementById('progressWrap');
+  const pfEl=document.getElementById('progressFill');
+  const ptEl=document.getElementById('progressText');
+  pwEl.style.display='block';
+  document.getElementById('convertBtn').disabled=true;
+  document.getElementById('downloadCard').style.display='none';
+  document.getElementById('downloadList').innerHTML='';
+  convertedResults=[];
+
+  const setP=(pct,txt)=>{pfEl.style.width=pct+'%';ptEl.textContent=txt;};
+  const quality=document.getElementById('qualitySlider').value;
+  const canvas=document.getElementById('offscreen');
+  const baseName=loadedImageData.fileName||'output';
+
+  try{
+    setP(5,'이미지 렌더링 중...');
+    if(loadedImageData.type==='svg') await svgToCanvas(canvas,w,h);
+    else drawToCanvas(canvas,loadedImageData.img,w,h);
+
+    // Update output preview with freshly converted canvas
+    const prevCvs=document.createElement('canvas');
+    const ps=Math.min(1,2400/Math.max(w,h));
+    prevCvs.width=Math.round(w*ps);prevCvs.height=Math.round(h*ps);
+    prevCvs.getContext('2d').drawImage(canvas,0,0,prevCvs.width,prevCvs.height);
+    outputDataUrl=prevCvs.toDataURL('image/png');
+    if(currentMode==='output') showInViewer(outputDataUrl, false);
+
+    setP(25,'형식 변환 중...');
+    const total=fmts.length;
+    for(let i=0;i<fmts.length;i++){
+      const fmt=fmts[i];
+      setP(25+Math.round(((i+1)/total)*70),`${fmt.toUpperCase()} 생성 중 (${i+1}/${total})...`);
+      await new Promise(r=>setTimeout(r,12));
+      const result=canvasToFormat(canvas,fmt,quality);
+      const sz=Math.round(result.dataUrl.length*0.75/1024);
+      convertedResults.push({...result,fname:`${baseName}_${w}x${h}.${result.ext}`,sz});
+    }
+
+    setP(100,`✅ 변환 완료 — ${total}개 파일 아래에서 다운로드하세요`);
+    buildDownloadSection(w,h);
+  } catch(err){
+    setP(0,'❌ 오류: '+err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('convertBtn').disabled=false;
+  }
+}
+
+// ══════════════════════════════════════
+//  DOWNLOAD (Step 6)
+// ══════════════════════════════════════
+function buildDownloadSection(w,h){
+  const list=document.getElementById('downloadList');
+  list.innerHTML='';
+  convertedResults.forEach(r=>{
+    const item=document.createElement('div');
+    item.className='dl-item'+(r.warn?' warn':'');
+    const info=r.warn
+      ?`⚠️ ${r.ext.toUpperCase()} — 브라우저 미지원, PNG로 대체됨`
+      :`✅ ${r.ext.toUpperCase()} — ${w}×${h}px, ~${r.sz} KB`;
+    item.innerHTML=`<span>${info}</span>`;
+    const a=document.createElement('a');
+    a.className='dl-link';a.href=r.dataUrl;a.download=r.fname;a.textContent='다운로드';
+    item.appendChild(a);
+    list.appendChild(item);
+  });
+  const allBtn=document.getElementById('dlAllBtn');
+  allBtn.style.display=convertedResults.length>1?'flex':'none';
+  document.getElementById('downloadCard').style.display='block';
+  document.getElementById('downloadCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function downloadAll(){
+  convertedResults.forEach((r,i)=>{
+    setTimeout(()=>{
+      const a=document.createElement('a');
+      a.href=r.dataUrl;a.download=r.fname;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    },i*350);
+  });
+}
+</script>
+</body>
+</html>
